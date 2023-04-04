@@ -301,5 +301,16 @@ string LinuxParser::User(int pid)
 // Read and return the uptime of a process
 long LinuxParser::UpTime(int pid) 
 { 
-  return 0; 
+  string file_name = kProcDirectory + to_string(pid) + kStatFilename;
+  std::ifstream stream(file_name);
+  if (!stream.is_open()) return 0;
+  
+  string line, value;
+  getline(stream, line);
+  std::istringstream linestream(line);
+  vector<string> list_of_proc_stats((std::istream_iterator<string>(linestream)), std::istream_iterator<string>());
+  
+  long uptime = LinuxParser::UpTime();
+  long starttime = std::stol(list_of_proc_stats[21].c_str()) / sysconf(_SC_CLK_TCK);
+  return uptime - starttime;
 }
