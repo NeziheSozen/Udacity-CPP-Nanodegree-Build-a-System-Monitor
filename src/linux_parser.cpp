@@ -273,7 +273,28 @@ string LinuxParser::Uid(int pid)
 // TODO: Read and return the user associated with a process
 string LinuxParser::User(int pid) 
 { 
-  return string(); 
+    string uid = Uid(pid);
+  string commandline_file_name = kPasswordPath;
+  string line;
+  string key, value;
+  string user;
+  string postfix = "..";
+
+  std::ifstream stream(commandline_file_name);
+  if (stream.is_open()) {
+    while (getline(stream, line)) {
+      std::replace(line.begin(), line.end(), ':', ' ');
+      std::istringstream linestream(line);
+      linestream >> key >> value;
+      if (value == uid) {
+        user = key;
+        break;
+      }
+    }
+  }
+
+  user = user.substr(0, 8) + postfix;
+  return user;
 }
 
 // Read and return the uptime of a process
