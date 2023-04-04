@@ -209,14 +209,18 @@ float LinuxParser::CpuUtilizationProcess(int pid) {
 
 // Read and return the total number of processes
 int LinuxParser::TotalProcesses() 
-{
-  return 0;
+{ 
+  string key = "processes";
+  string path = kProcDirectory + kStatFilename;
+  return findValueByKey<int>(path,key);
 }
 
 // Read and return the number of running processes
 int LinuxParser::RunningProcesses() 
 { 
-  return 0; 
+  string key = "procs_running";
+  string path = kProcDirectory + kStatFilename;
+  return findValueByKey<int>(path,key);
 }
 
 // Read and return the command associated with a process
