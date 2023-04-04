@@ -121,6 +121,21 @@ T findValueByKey(const std::string& pathName, const std::string& keyFilter) {
   throw std::runtime_error("Key " + keyFilter + " not found in file " + pathName);
 }
 
+// Helper template method
+template <typename T> 
+T getValueOfFile(std::string const& PathName)
+{
+  T value;
+
+  std::ifstream filestream(PathName);
+  if (filestream.is_open()) {
+    std::istringstream linestream;
+    linestream >> value;
+  }
+
+  return value;
+}
+
 // Update this to use std::filesystem
 vector<int> LinuxParser::Pids() {
   vector<int> pids;
