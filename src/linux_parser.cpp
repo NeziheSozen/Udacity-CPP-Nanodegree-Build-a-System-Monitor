@@ -85,6 +85,18 @@ long getProcessActiveJiffies(int pid) {
   return totalJiffies;
 }
 
+//helper method for splitting string
+vector<string> split(const string& s, char delimiter) 
+{
+  vector<string> tokens;
+  stringstream ss(s);
+  string token;
+  while (getline(ss, token, delimiter)) {
+    tokens.push_back(token);
+  }
+  return tokens;
+}
+
 // Update this to use std::filesystem
 vector<int> LinuxParser::Pids() {
   vector<int> pids;
@@ -264,37 +276,39 @@ string LinuxParser::Ram(int pid)
   return "0"; 
 }
 
-// TODO: Read and return the user ID associated with a process
+// Read and return the user ID associated with a process
 string LinuxParser::Uid(int pid) 
 { 
   std::string path = kProcDirectory + std::to_string(pid) + kStatusFilename;
   return findValueByKey<std::string>(path, "Uid:");
 }
 
-// TODO: Read and return the user associated with a process
+// Read and return the user associated with a process
 string LinuxParser::User(int pid) 
 { 
-    string uid = Uid(pid);
-  string commandline_file_name = kPasswordPath;
-  string line;
-  string key, value;
-  string user;
-  string postfix = "..";
-
-  std::ifstream stream(commandline_file_name);
-  if (stream.is_open()) {
-    while (getline(stream, line)) {
-      std::replace(line.begin(), line.end(), ':', ' ');
-      std::istringstream linestream(line);
-      linestream >> key >> value;
-      if (value == uid) {
-        user = key;
+  string uid = Uid(pid);
+  string user = "unknown";
+  
+  // Read /etc/passwd file and extract username by UID
+  string passwd_file = "/etc/passwd";
+  ifstream filestream(passwd_file);
+  if (filestream.is_open()) {
+    string line;
+    while (getline(filestream, line)) {
+      vector<string> tokens = split(line, ':');
+      if (tokens.size() >= 3 && tokens[2] == uid) {
+        user = tokens[0];
         break;
       }
     }
   }
-
-  user = user.substr(0, 8) + postfix;
+  
+  // Truncate username if it's too long
+  const int kMaxUsernameLength = 10;
+  if (user.length() > kMaxUsernameLength) {
+    user = user.substr(0, kMaxUsernameLength - 2) + "..";
+  }
+  
   return user;
 }
 
