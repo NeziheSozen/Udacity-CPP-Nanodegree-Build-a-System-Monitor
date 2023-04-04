@@ -97,6 +97,30 @@ vector<string> split(const string& s, char delimiter)
   return tokens;
 }
 
+//helper template method
+template <typename T>
+T findValueByKey(const std::string& pathName, const std::string& keyFilter) {
+  std::ifstream filestream(pathName);
+  if (!filestream.is_open()) {
+    throw std::runtime_error("Cannot open file: " + pathName);
+  }
+
+  T value{};
+  std::string line;
+  while (std::getline(filestream, line)) {
+    std::istringstream linestream(line);
+    std::string key;
+    if (linestream >> key && key == keyFilter) {
+      if (!(linestream >> value)) {
+        throw std::runtime_error("Failed to extract value for key " + keyFilter);
+      }
+      return value;
+    }
+  }
+
+  throw std::runtime_error("Key " + keyFilter + " not found in file " + pathName);
+}
+
 // Update this to use std::filesystem
 vector<int> LinuxParser::Pids() {
   vector<int> pids;
