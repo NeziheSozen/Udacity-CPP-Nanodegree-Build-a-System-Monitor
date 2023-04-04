@@ -178,19 +178,43 @@ long LinuxParser::ActiveJiffies(int pid)
 // Read and return the number of active jiffies for the system
 long LinuxParser::ActiveJiffies() 
 { 
-  return 0; 
+  vector<string> cpu_utilization = CpuUtilization();
+  vector<int> active_jiffies_indexes = {kUser_, kNice_, kSystem_, kIRQ_, kSoftIRQ_, kSteal_};
+  long active_jiffies = 0;
+  for (int index : active_jiffies_indexes) {
+    active_jiffies += stol(cpu_utilization[index]);
+  }
+  return active_jiffies;
 }
 
 // Read and return the number of idle jiffies for the system
 long LinuxParser::IdleJiffies() 
 { 
-  return 0; 
+  vector<string> cpu_utilization = CpuUtilization();
+  float idle_jiffies = stof(cpu_utilization[kIdle_]) + stof(cpu_utilization[kIOwait_]);
+  return idle_jiffies;
 }
 
 // Read and return CPU utilization
 vector<string> LinuxParser::CpuUtilization() 
 { 
-  return {}; 
+  vector<string> jiffies;
+
+  std::ifstream filestream(kProcDirectory + kStatFilename);
+  if (filestream.is_open()) {
+    string line;
+    while (getline(filestream, line)) {
+      std::istringstream linestream(line);
+      string cpu_label;
+      linestream >> cpu_label;
+      if (cpu_label == "cpu") {
+        std::copy(std::istream_iterator<string>(linestream),
+                  std::istream_iterator<string>(),
+                  std::back_inserter(jiffies));
+      }
+    }
+  }
+  return jiffies;
 }
 
 float LinuxParser::CpuUtilizationProcess(int pid) {
