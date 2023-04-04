@@ -2,13 +2,20 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <sstream> 
+#include <numeric>
+#include <fstream> 
 
 #include "linux_parser.h"
+
 
 using std::stof;
 using std::string;
 using std::to_string;
 using std::vector;
+using std::istringstream;
+using std::accumulate;
+using std::ifstream;
 
 // An example of how to read data from the filesystem
 string LinuxParser::OperatingSystem() {
