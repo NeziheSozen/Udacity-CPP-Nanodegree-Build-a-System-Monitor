@@ -46,6 +46,38 @@ string LinuxParser::Kernel() {
   return kernel;
 }
 
+//Helper method:
+long getProcessActiveJiffies(int pid) {
+  string fileName = LinuxParser::kProcDirectory + to_string(pid) + LinuxParser::kStatFilename;
+  ifstream stream(fileName);
+  vector<string> values;
+
+  if (stream.is_open()) {
+    string line;
+    getline(stream, line);
+
+    istringstream linestream(line);
+    string value;
+    while (linestream >> value) {
+      values.push_back(value);
+    }
+  }
+
+  if (values.size() < 17) {
+    // Handle error: not enough fields in values
+    return -1;
+  }
+
+  long userTime = stol(values[13]);
+  long systemTime = stol(values[14]);
+  long childUserTime = stol(values[15]);
+  long childSystemTime = stol(values[16]);
+
+  long totalJiffies = userTime + systemTime + childUserTime + childSystemTime;
+
+  return totalJiffies;
+}
+
 // Update this to use std::filesystem
 vector<int> LinuxParser::Pids() {
   vector<int> pids;
@@ -106,13 +138,22 @@ long LinuxParser::UpTime()
 // Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() 
 { 
-  return 0;
+  return ActiveJiffies() + IdleJiffies(); 
 }
 
 // Read and return the number of active jiffies for a PID
 long LinuxParser::ActiveJiffies(int pid) 
 { 
-  return 0; 
+  long totalJiffies = LinuxParser::Jiffies();
+  long activeJiffies = getProcessActiveJiffies(pid);
+
+  if (totalJiffies <= 0) {
+    // Handle error: totalJiffies is not positive
+    return -1;
+  }
+
+  long activeJiffiesPercentage = (activeJiffies * 100) / totalJiffies;
+  return activeJiffiesPercentage;
 }
 
 // Read and return the number of active jiffies for the system
