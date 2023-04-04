@@ -267,7 +267,8 @@ string LinuxParser::Ram(int pid)
 // TODO: Read and return the user ID associated with a process
 string LinuxParser::Uid(int pid) 
 { 
-  return string(); 
+  std::string path = kProcDirectory + std::to_string(pid) + kStatusFilename;
+  return findValueByKey<std::string>(path, "Uid:");
 }
 
 // TODO: Read and return the user associated with a process
