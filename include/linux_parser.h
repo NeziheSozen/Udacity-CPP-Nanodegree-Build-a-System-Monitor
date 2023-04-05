@@ -5,6 +5,7 @@
 #include <regex>
 #include <string>
 
+
 namespace LinuxParser {
 // Paths
 const std::string kProcDirectory{"/proc/"};
@@ -45,6 +46,8 @@ long Jiffies();
 long ActiveJiffies();
 long ActiveJiffies(int pid);
 long IdleJiffies();
+float CpuUtilizationProcess(int pid);
+int GetRam(int pid);
 
 // Processes
 std::string Command(int pid);
