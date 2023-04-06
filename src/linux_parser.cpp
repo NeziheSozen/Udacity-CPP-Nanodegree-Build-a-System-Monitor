@@ -179,20 +179,6 @@ float LinuxParser::MemoryUtilization()
   return (total_memory > 0) ? (total_memory - free_memory) / total_memory : 0.0;
 }
 
-// Read and return the system uptime
-long LinuxParser::UpTime() 
-{
-  long up_time = 0;
-  std::ifstream stream(kProcDirectory + kUptimeFilename);
-  if (stream.is_open()) {
-    if (stream >> up_time) {
-      return up_time;
-    }
-  }
-  return 0;
-}
-
-
 // Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() 
 { 
@@ -375,19 +361,48 @@ string LinuxParser::User(int pid)
   return user;
 }
 
-// Read and return the uptime of a process
+/ Read and return the system uptime
+long LinuxParser::UpTime() 
+{
+long up_time = 0;
+  std::ifstream stream(LinuxParser::kProcDirectory + LinuxParser::kUptimeFilename);
+  if (stream.is_open())
+  {
+    if (stream >> up_time)
+    {
+      return up_time;
+    }
+  }
+  return 0;
+}
+
+// Read and return the UpTime with a process
 long LinuxParser::UpTime(int pid) 
 { 
-  string file_name = kProcDirectory + to_string(pid) + kStatFilename;
-  std::ifstream stream(file_name);
-  if (!stream.is_open()) return 0;
-  
-  string line, value;
-  getline(stream, line);
-  std::istringstream linestream(line);
-  vector<string> list_of_proc_stats((std::istream_iterator<string>(linestream)), std::istream_iterator<string>());
-  
-  long uptime = LinuxParser::UpTime();
-  long starttime = std::stol(list_of_proc_stats[21].c_str()) / sysconf(_SC_CLK_TCK);
-  return uptime - starttime;
+  std::string line;
+  std::ifstream stream(LinuxParser::kProcDirectory + std::to_string(pid) + LinuxParser::kStatFilename);
+  std::vector<std::string> tokens;
+
+  if (stream.is_open())
+  {
+    if (std::getline(stream, line))
+    {
+      std::istringstream linestream(line);
+      std::string token;
+      while (linestream >> token)
+      {
+        tokens.push_back(token);
+      }
+    }
+  }
+
+  try{
+    if (!tokens.empty()) {
+      return (std::stol(tokens[21]) / sysconf(_SC_CLK_TCK));
+    }
+  } catch (const std::invalid_argument &error) {
+    std::cerr << error.what() << std::endl;
+  }
+
+  return 0;
 }
