@@ -5,6 +5,7 @@
 #include <sstream> 
 #include <numeric>
 #include <fstream> 
+#include <iostream>
 
 #include "linux_parser.h"
 
@@ -16,6 +17,7 @@ using std::vector;
 using std::istringstream;
 using std::accumulate;
 using std::ifstream;
+using std::stringstream;
 
 // An example of how to read data from the filesystem
 string LinuxParser::OperatingSystem() {
@@ -179,20 +181,6 @@ float LinuxParser::MemoryUtilization()
   return (total_memory > 0) ? (total_memory - free_memory) / total_memory : 0.0;
 }
 
-// Read and return the system uptime
-long LinuxParser::UpTime() 
-{
-  long up_time = 0;
-  std::ifstream stream(kProcDirectory + kUptimeFilename);
-  if (stream.is_open()) {
-    if (stream >> up_time) {
-      return up_time;
-    }
-  }
-  return 0;
-}
-
-
 // Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() 
 { 
@@ -257,27 +245,47 @@ vector<string> LinuxParser::CpuUtilization()
 }
 
 float LinuxParser::CpuUtilizationProcess(int pid) {
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
-  if (!stream.is_open()) {
-    return 0.0f;
-  }
   std::string line;
-  std::getline(stream, line);
-  std::istringstream linestream(line);
-  std::vector<std::string> tokens(
-      std::istream_iterator<std::string>{linestream},
-      std::istream_iterator<std::string>{});
+  std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatFilename);
 
-  float utime = stof(tokens[13]);
-  float stime = stof(tokens[14]);
-  float cutime = stof(tokens[15]);
-  float cstime = stof(tokens[16]);
-  float starttime = stof(tokens[21]);
+  float utime = 0.0;
+  float stime = 0.0;
+  float cutime = 0.0;
+  float cstime = 0.0;
+  float starttime = 0.0;
+
+  auto Hertz = sysconf(_SC_CLK_TCK);
+  if (Hertz == 0) return 0;
+
+  int pos = 1;
+
+  if (filestream.is_open()) {
+    std::getline(filestream, line);
+    std::istringstream linestream(line);
+    std::vector<float> values(23);
+    for (int i = 0; i < 23; i++) {
+      linestream >> values[i];
+    }
+
+    utime = values[13];
+    stime = values[14];
+    cutime = values[15];
+    cstime = values[16];
+    starttime = values[21];
+  }
+
+  // To protect division by 0
+  if (pos < 22) {
+    return 0;
+  }
 
   float total_time = utime + stime + cutime + cstime;
-  float seconds = static_cast<float>(UpTime()) -
-                  (starttime / static_cast<float>(sysconf(_SC_CLK_TCK)));
-  float cpu_usage = total_time / (seconds * sysconf(_SC_CLK_TCK));
+  float seconds = UpTime() - (starttime / (float)Hertz);
+
+  // To protect division by 0
+  if (seconds == 0) return 0;
+
+  float cpu_usage = total_time / (float)Hertz / seconds;
 
   return cpu_usage;
 }
@@ -375,19 +383,55 @@ string LinuxParser::User(int pid)
   return user;
 }
 
-// Read and return the uptime of a process
+// Read and return the system uptime
+long LinuxParser::UpTime() 
+{
+long up_time = 0;
+  std::ifstream stream(LinuxParser::kProcDirectory + LinuxParser::kUptimeFilename);
+  if (stream.is_open())
+  {
+    if (stream >> up_time)
+    {
+      return up_time;
+    }
+  }
+  return 0;
+}
+
+// Read and return the UpTime with a process
 long LinuxParser::UpTime(int pid) 
 { 
-  string file_name = kProcDirectory + to_string(pid) + kStatFilename;
-  std::ifstream stream(file_name);
-  if (!stream.is_open()) return 0;
-  
-  string line, value;
-  getline(stream, line);
-  std::istringstream linestream(line);
-  vector<string> list_of_proc_stats((std::istream_iterator<string>(linestream)), std::istream_iterator<string>());
-  
-  long uptime = LinuxParser::UpTime();
-  long starttime = std::stol(list_of_proc_stats[21].c_str()) / sysconf(_SC_CLK_TCK);
-  return uptime - starttime;
+  std::string line;
+  std::ifstream stream(LinuxParser::kProcDirectory + std::to_string(pid) + LinuxParser::kStatFilename);
+  std::vector<std::string> tokens;
+
+  if (stream.is_open())
+  {
+    if (std::getline(stream, line))
+    {
+      std::istringstream linestream(line);
+      std::string token;
+      while (linestream >> token)
+      {
+        tokens.push_back(token);
+      }
+    }
+  }
+
+  try{
+    if (!tokens.empty()) {
+      return (std::stol(tokens[21]) / sysconf(_SC_CLK_TCK));
+    }
+  } catch (const std::invalid_argument &error) {
+    std::cerr << error.what() << std::endl;
+  }
+
+  return 0;
+}
+
+// Read and return the RAM
+int LinuxParser::GetRam(int pid)
+{
+  std::string ram = LinuxParser::Ram(pid);
+  return std::stoi(ram);
 }
