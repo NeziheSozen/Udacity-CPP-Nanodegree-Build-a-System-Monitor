@@ -245,27 +245,47 @@ vector<string> LinuxParser::CpuUtilization()
 }
 
 float LinuxParser::CpuUtilizationProcess(int pid) {
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
-  if (!stream.is_open()) {
-    return 0.0f;
-  }
   std::string line;
-  std::getline(stream, line);
-  std::istringstream linestream(line);
-  std::vector<std::string> tokens(
-      std::istream_iterator<std::string>{linestream},
-      std::istream_iterator<std::string>{});
+  std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatFilename);
 
-  float utime = stof(tokens[13]);
-  float stime = stof(tokens[14]);
-  float cutime = stof(tokens[15]);
-  float cstime = stof(tokens[16]);
-  float starttime = stof(tokens[21]);
+  float utime = 0.0;
+  float stime = 0.0;
+  float cutime = 0.0;
+  float cstime = 0.0;
+  float starttime = 0.0;
+
+  auto Hertz = sysconf(_SC_CLK_TCK);
+  if (Hertz == 0) return 0;
+
+  int pos = 1;
+
+  if (filestream.is_open()) {
+    std::getline(filestream, line);
+    std::istringstream linestream(line);
+    std::vector<float> values(23);
+    for (int i = 0; i < 23; i++) {
+      linestream >> values[i];
+    }
+
+    utime = values[13];
+    stime = values[14];
+    cutime = values[15];
+    cstime = values[16];
+    starttime = values[21];
+  }
+
+  // To protect division by 0
+  if (pos < 22) {
+    return 0;
+  }
 
   float total_time = utime + stime + cutime + cstime;
-  float seconds = static_cast<float>(UpTime()) -
-                  (starttime / static_cast<float>(sysconf(_SC_CLK_TCK)));
-  float cpu_usage = total_time / (seconds * sysconf(_SC_CLK_TCK));
+  float seconds = UpTime() - (starttime / (float)Hertz);
+
+  // To protect division by 0
+  if (seconds == 0) return 0;
+
+  float cpu_usage = total_time / (float)Hertz / seconds;
 
   return cpu_usage;
 }
