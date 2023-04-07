@@ -5,6 +5,7 @@
 #include <sstream> 
 #include <numeric>
 #include <fstream> 
+#include <iostream>
 
 #include "linux_parser.h"
 
@@ -16,6 +17,7 @@ using std::vector;
 using std::istringstream;
 using std::accumulate;
 using std::ifstream;
+using std::stringstream;
 
 // An example of how to read data from the filesystem
 string LinuxParser::OperatingSystem() {
@@ -361,7 +363,7 @@ string LinuxParser::User(int pid)
   return user;
 }
 
-/ Read and return the system uptime
+// Read and return the system uptime
 long LinuxParser::UpTime() 
 {
 long up_time = 0;
@@ -405,4 +407,11 @@ long LinuxParser::UpTime(int pid)
   }
 
   return 0;
+}
+
+// Read and return the RAM
+int LinuxParser::GetRam(int pid)
+{
+  std::string ram = LinuxParser::Ram(pid);
+  return std::stoi(ram);
 }
