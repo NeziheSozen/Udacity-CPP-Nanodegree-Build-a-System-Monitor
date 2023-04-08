@@ -418,9 +418,21 @@ long LinuxParser::UpTime(int pid)
     }
   }
 
-  try{
+  try {
     if (!tokens.empty()) {
-      return (std::stol(tokens[21]) / sysconf(_SC_CLK_TCK));
+      long starttime = std::stol(tokens[21]); // get the starttime value
+
+      // Check Linux kernel version to determine the units of starttime
+      long uptime;
+      auto k = stof(LinuxParser::Kernel());
+      if (k< 2.6) {
+        uptime = starttime;  // expressed in jiffies
+      } else {
+        uptime = starttime / sysconf(_SC_CLK_TCK); // expressed in clock ticks
+      }
+
+      long system_uptime = LinuxParser::UpTime(); // get the system uptime
+      return system_uptime - uptime; // subtract process starttime from system uptime to get process uptime
     }
   } catch (const std::invalid_argument &error) {
     std::cerr << error.what() << std::endl;
